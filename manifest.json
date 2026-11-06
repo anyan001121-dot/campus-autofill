@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "校招投递助手",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "校招网申自动填写：用 AI 把简历转成资料后导入，打开网申页面自动识别并填写基本信息、教育、实习、项目、奖项等。资料只存在本机浏览器。",
   "action": {
     "default_popup": "popup.html"

@@ -104,8 +104,9 @@ function renderList(raw, track) {
     `${e.school}｜${e.major}｜${e.degree}（${e.start_year}.${e.start_month} - ${e.end_year}.${e.end_month}）`));
 
   sec = addCategory(list, "实习经历");
-  const it = profile.internship || {};
-  if (it.company) addCopyRow(sec, "实习｜" + it.company, `${it.company}｜${it.dept}｜${it.title}（${it.period}）\n${it.one_liner}`, { type: "intern" });
+  window.AYA_VIEW.internsOf(profile).forEach(it => addCopyRow(sec, "实习｜" + it.company + (it.title ? "｜" + it.title : ""),
+    `${it.company}｜${it.dept || ""}｜${it.title || ""}（${it.period || ""}）\n${[it.core_result, it.responsibilities, it.task_action, it.insight].filter(Boolean).join("\n\n") || it.one_liner || ""}`,
+    { type: "intern", name: it.company, title: it.title }));
 
   sec = addCategory(list, `项目经历（${window.AYA_VIEW.tracksOf(raw)[track] || "都填"}）`);
   // 四段（core_result / responsibilities / task_action / insight）在资料里

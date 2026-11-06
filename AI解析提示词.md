@@ -16,7 +16,7 @@
 4. 年、月、日都写成字符串，例如 "2024"、"9"、"15"（月和日不补零）。还在进行中的经历写 "ongoing": true，不写结束年月。
 5. education_entries、project_entries、honors 等列表按时间从新到旧排列。education_entries 的第一条是最高学历。
 6. 奖项 level 只能填 "国家级"、"省市级"、"校级"、"其他" 之一；type 只能填 "竞赛"、"奖学金"、"其他" 之一。
-7. internship 只放一段最重要（或最近）的实习。
+7. internship_entries 放全部实习/工作经历，每段一条，按时间从新到旧排列；没有实习写 []。
 8. 只输出 JSON 本身，放在一个 ```json 代码块里，不要写注释，不要在 JSON 前后写解释。
 
 ## JSON 格式（下面的值是说明，请替换成真实内容）
@@ -86,18 +86,21 @@
   "self_intro_long": "自我介绍长版（约 150-300 字）",
   "specialty": "特长",
   "hobbies": "兴趣爱好",
-  "internship": {
-    "company": "公司全称",
-    "dept": "部门",
-    "title": "职位",
-    "period": "YYYY.MM - YYYY.MM",
-    "start_year": "", "start_month": "", "end_year": "", "end_month": "",
-    "one_liner": "一句话概括（用原文）",
-    "core_result": "【背景与任务】……",
-    "responsibilities": "【个人职责】……",
-    "task_action": "【任务与行动】……",
-    "insight": "【项目成果】……"
-  },
+  "internship_entries": [
+    {
+      "company": "公司全称",
+      "dept": "部门",
+      "title": "职位",
+      "period": "YYYY.MM - YYYY.MM",
+      "start_year": "", "start_month": "", "end_year": "", "end_month": "",
+      "ongoing": false,
+      "one_liner": "一句话概括（用原文）",
+      "core_result": "【背景与任务】……",
+      "responsibilities": "【个人职责】……",
+      "task_action": "【任务与行动】……",
+      "insight": "【项目成果】……"
+    }
+  ],
   "project_entries": [
     {
       "name": "项目名称",

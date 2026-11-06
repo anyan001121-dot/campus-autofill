@@ -70,6 +70,10 @@
     ok("检查结果有条目统计", /教育 2 段/.test(c.summary), c.summary);
     await AYA_STORE.save(parsed);
   }
+  const legacy = JSON.parse(JSON.stringify(P)); legacy.internship = legacy.internship_entries[0]; delete legacy.internship_entries;
+  const lp = AYA_STORE.normalize(legacy);
+  ok("老格式的单段 internship 转成 internship_entries", lp.internship_entries.length === 1 && lp.internship_entries[0].company === P.internship_entries[0].company && !("internship" in lp), JSON.stringify(lp.internship_entries));
+  ok("检查结果数出两段实习", /实习 2 段/.test(AYA_STORE.check(AYA_STORE.normalize(JSON.parse(JSON.stringify(P)))).summary), AYA_STORE.check(AYA_STORE.normalize(JSON.parse(JSON.stringify(P)))).summary);
   let bad = null;
   try { AYA_STORE.parse("这里没有 JSON"); } catch (e) { bad = e.message; }
   ok("没有 JSON 时给出明白的错误", bad && /没找到 JSON/.test(bad), bad);

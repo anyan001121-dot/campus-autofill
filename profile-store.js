@@ -46,12 +46,16 @@
       return e;
     };
     fixEntry(p);
-    for (const k of ["education_entries", "language_entries", "honors", "project_entries", "campus_entries", "ip_entries"]) {
+    for (const k of ["education_entries", "language_entries", "honors", "project_entries", "campus_entries", "ip_entries", "internship_entries"]) {
       if (p[k] == null) p[k] = [];
       if (!Array.isArray(p[k])) p[k] = [p[k]];
       p[k].forEach(fixEntry);
     }
-    if (p.internship) fixEntry(p.internship);
+    // 老格式只有一段 internship：搬进 internship_entries
+    if (p.internship && typeof p.internship === "object") {
+      if (!p.internship_entries.length && p.internship.company) p.internship_entries = [fixEntry(p.internship)];
+      delete p.internship;
+    }
     if (!p.education || typeof p.education !== "object") p.education = {};
     // 没写 education 汇总时，从第一条（最高学历）补上
     const top = p.education_entries[0];
@@ -75,8 +79,9 @@
       if (!e.start_year) warn.push(`第 ${i + 1} 段教育没有入学年份`);
     });
     p.project_entries.forEach((e, i) => { if (!e.name) warn.push(`第 ${i + 1} 个项目没有名称`); });
+    p.internship_entries.forEach((e, i) => { if (!e.company) warn.push(`第 ${i + 1} 段实习没有公司名`); });
     const summary = `教育 ${p.education_entries.length} 段、项目 ${p.project_entries.length} 个、` +
-      `实习 ${p.internship && p.internship.company ? 1 : 0} 段、组织经历 ${p.campus_entries.length} 段、奖项 ${p.honors.length} 个`;
+      `实习 ${p.internship_entries.length} 段、组织经历 ${p.campus_entries.length} 段、奖项 ${p.honors.length} 个`;
     return { summary, warn };
   }
 

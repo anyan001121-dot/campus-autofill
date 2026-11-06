@@ -9,12 +9,16 @@
 // only(p, target)：只留一项，其余清空，引擎就只会填这一项。
 //   target.type：basic（个人资料：基本信息、教育、语言、自我介绍）/ project / campus（组织经历）/ intern / award
 //   target.name：project / campus / award 用名字指定是哪一条；award 不给名字表示全部奖项。
+//   intern 用 target.name（公司）+ target.title（职位）指定是哪一段实习。
 (function () {
   // 这些是"经历类"的键；个人资料模式要清掉它们，单项模式只留目标那一项
-  const EXP_KEYS = ["project_entries", "projects", "campus_entries", "organizations", "internship",
+  const EXP_KEYS = ["project_entries", "projects", "campus_entries", "organizations", "internship", "internship_entries",
     "honors", "honors_text", "ip_entries"];
 
   const clone = (o) => JSON.parse(JSON.stringify(o));
+  // 实习列表（兼容老资料的单段 internship）
+  const internsOf = (p) => clone(Array.isArray(p.internship_entries) && p.internship_entries.length ? p.internship_entries
+    : p.internship && p.internship.company ? [p.internship] : []).filter(e => e && e.company);
   const endKey = (e) => e.ongoing ? 999999 : Number(e.end_year || e.start_year || 0) * 100 + Number(e.end_month || e.start_month || 0);
 
   // 资料里定义的投递方向（键 → 显示名），再加一个"都填"
@@ -62,7 +66,9 @@
     const same = (e) => e && e.name === t.name;
     if (t.type === "project") out.project_entries = (p.project_entries || []).filter(same);
     else if (t.type === "campus") out.campus_entries = (p.campus_entries || []).filter(same);
-    else if (t.type === "intern") out.internship = clone(p.internship || {});
+    else if (t.type === "intern") {
+      out.internship_entries = internsOf(p).filter(e => (!t.name || e.company === t.name) && (!t.title || e.title === t.title));
+    }
     else if (t.type === "award") {
       out.honors = (p.honors || []).filter(h => !t.name || h.name === t.name);
       if (!t.name) out.honors_text = p.honors_text;
@@ -70,7 +76,7 @@
     return out;
   }
 
-  const api = { tracksOf, validTrack, byTrack, only, projectsFor };
+  const api = { tracksOf, validTrack, byTrack, only, projectsFor, internsOf };
   if (typeof window !== "undefined") window.AYA_VIEW = api;
   if (typeof module !== "undefined") module.exports = api;
 })();

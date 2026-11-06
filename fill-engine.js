@@ -718,7 +718,7 @@
       ],
     },
     intern: {
-      entries: (p) => p.internship && p.internship.company ? [p.internship] : [],
+      entries: (p) => internsOf(p),
       anchor: "company",
       entryName: (e) => e.company,
       fields: [
@@ -822,6 +822,13 @@
       { key: "name", re: /名称|成果|专利|软件/, val: (e) => e.name },
     ],
   };
+  // 实习可以有多段：internship_entries（从新到旧）。老资料只有一段 internship，也照样认。
+  function internsOf(p) {
+    const list = Array.isArray(p.internship_entries) && p.internship_entries.length ? p.internship_entries
+      : p.internship && p.internship.company ? [p.internship] : [];
+    return list.filter(e => e && e.company);
+  }
+
   SCHEMAS.honor_other = Object.assign({}, SCHEMAS.award, {
     entries: (p) => (p.honors || []).filter(h => h.type !== "竞赛"),
   });
@@ -834,7 +841,7 @@
     const E = p.education || {};
     const projText = (p.project_entries || []).map(x => `${x.name}｜${x.role_short}\n${descText(x, true)}`).join("\n\n———\n\n");
     const hi = (p.education_entries || []).find(e => e.degree === E.highest_degree) || {};
-    const it = p.internship || {};
+    const interns = internsOf(p);
     return [
       { re: /英文名|englishname/i, val: p.name_en },
       { re: /^(姓|姓氏|lastname|surname|familyname)$/i, val: p.last_name },
@@ -880,7 +887,7 @@
       { re: /兴趣爱好|^(个人|业余)?爱好$|^兴趣$|hobb/i, val: p.hobbies },
       // 只有"一个大文本框装全部经历"的网站才用这几条合并版
       { re: /^(项目经历|项目经验)$/, kinds: ["textarea"], val: projText },
-      { re: /^(实习经历|工作经历)$/, kinds: ["textarea"], val: it.company ? `${it.company}｜${it.dept}｜${it.title}（${it.period}）\n${it.one_liner}` : "" },
+      { re: /^(实习经历|工作经历)$/, kinds: ["textarea"], val: interns.map(it => `${it.company}｜${it.dept || ""}｜${it.title || ""}（${it.period || ""}）\n${it.one_liner || ""}`).join("\n\n") },
       { re: /^(荣誉|获奖情况|获奖经历|荣誉奖项|奖励情况)$/, kinds: ["textarea", "text"], val: p.honors_text },
     ];
   }
@@ -2204,7 +2211,7 @@
 
   // 改了引擎就同时改这里和 manifest.json 的 version（测试页会检查两者一致）。
   // 提示和弹窗里显示它，一眼看出页面里跑的是不是旧版。
-  const ENGINE_VERSION = "1.0.0";
+  const ENGINE_VERSION = "1.1.0";
   const api = { fillForm, looksLikeForm, diagnose, lastMissed: [], version: ENGINE_VERSION,
     // 只给 tests/ 回归测试调试用（页面脚本访问不到插件隔离环境里的这个对象）
     _t: { buildModel, fillDate, fillRange, readValue, pickInGenericPanel, typeIntoDatePopup, applyValue, isRequired } };

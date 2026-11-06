@@ -152,7 +152,7 @@
         { t: "school", eq: P.education_entries[0].school },
         { t: "e_period", eq: `${ym(P.education_entries[0], "start")}|${ym(P.education_entries[0], "end")}` },
         { t: "etype", eq: "海外及港澳台" },
-        { t: "company", eq: P.internship.company }, { t: "i_period", eq: `${ym(P.internship, "start")}|${ym(P.internship, "end")}` },
+        { t: "company", eq: P.internship_entries[0].company }, { t: "i_period", eq: `${ym(P.internship_entries[0], "start")}|${ym(P.internship_entries[0], "end")}` },
         { t: "pname", eq: P.project_entries[0].name }, { t: "p_period", eq: `${ym(P.project_entries[0], "start")}|至今` },
         { t: "lang", eq: "英语" }, { t: "level", eq: "无障碍沟通" },
         { diag: "无准确", none: true }, // 说明行不能当标签：诊断里不该出现这段字
@@ -557,6 +557,58 @@
         { t: "an1", eq: P.honors[1].name },
         { t: "an2", starts: P.honors[2].name },
         { fn: () => window.__awRows() === 2, what: "奖项行数 = 2", got: () => String(window.__awRows()) },
+      ],
+    })),
+    // 实习可以有多段（internship_entries）：点添加另开一行，按顺序各填一段
+    {
+      name: "多段实习：只有一行时点添加，两段实习各填一行，不重复",
+      html: sec("实习经历", '<div class="irows"></div><button type="button" class="iadd">添加实习经历</button>'),
+      setup: (root) => {
+        const rows = root.querySelector(".irows");
+        const addRow = () => {
+          const n = rows.children.length + 1;
+          const d = document.createElement("div");
+          d.innerHTML = mkField("ic" + n, "公司名称", '<input class="sd-Input-input">') +
+            mkField("it" + n, "职位名称", '<input class="sd-Input-input">') +
+            mkField("id" + n, "工作内容", '<textarea class="sd-TextArea"></textarea>');
+          rows.appendChild(d);
+        };
+        addRow();
+        root.querySelector(".iadd").addEventListener("click", addRow);
+        window.__inRows = () => rows.children.length;
+      },
+      expect: (P) => [
+        { t: "ic1", eq: P.internship_entries[0].company }, { t: "it1", eq: P.internship_entries[0].title },
+        { t: "id1", has: P.internship_entries[0].task_action.slice(0, 20) },
+        { t: "ic2", eq: P.internship_entries[1].company }, { t: "it2", eq: P.internship_entries[1].title },
+        { t: "id2", has: P.internship_entries[1].task_action.slice(0, 20) },
+        { fn: () => window.__inRows() === 2, what: "实习行数 = 2", got: () => String(window.__inRows()) },
+      ],
+    },
+    ...[false, true].map(ow => ({
+      name: `单项填写·第二段实习：第一行已填第一段，不能盖掉，另开一行${ow ? "（开覆盖）" : ""}`,
+      html: sec("实习经历", '<div class="irows"></div><button type="button" class="iadd">添加实习经历</button>'),
+      setup: (root, P) => {
+        const rows = root.querySelector(".irows");
+        const addRow = () => {
+          const n = rows.children.length + 1;
+          const d = document.createElement("div");
+          d.innerHTML = mkField("ic" + n, "公司名称", '<input class="sd-Input-input">') +
+            mkField("it" + n, "职位名称", '<input class="sd-Input-input">');
+          rows.appendChild(d);
+        };
+        addRow();
+        rows.querySelector("input").value = P.internship_entries[0].company;
+        root.querySelector(".iadd").addEventListener("click", addRow);
+        window.__inRows = () => rows.children.length;
+      },
+      view: (P) => window.AYA_VIEW.only(P, { type: "intern", name: P.internship_entries[1].company, title: P.internship_entries[1].title }),
+      scope: "intern",
+      overwrite: ow,
+      expect: (P) => [
+        { t: "ic1", eq: P.internship_entries[0].company },
+        { t: "ic2", eq: P.internship_entries[1].company }, { t: "it2", eq: P.internship_entries[1].title },
+        { fn: () => window.__inRows() === 2, what: "实习行数 = 2", got: () => String(window.__inRows()) },
       ],
     })),
   ];
