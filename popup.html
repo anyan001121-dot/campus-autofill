@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<title>校招投递助手</title>
+<style>
+  body {
+    width: 340px;
+    margin: 0;
+    font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: #faf9f7;
+    color: #2b2b2b;
+  }
+  header {
+    padding: 14px 16px 10px;
+    border-bottom: 1px solid #eee;
+  }
+  header h1 {
+    font-size: 15px;
+    margin: 0 0 2px;
+  }
+  header p {
+    font-size: 11px;
+    color: #888;
+    margin: 0;
+  }
+  .toggle-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 16px;
+    font-size: 12.5px;
+  }
+  .switch {
+    position: relative;
+    width: 36px;
+    height: 20px;
+    flex-shrink: 0;
+  }
+  .switch input { opacity: 0; width: 0; height: 0; }
+  .slider {
+    position: absolute; cursor: pointer; inset: 0;
+    background: #ccc; border-radius: 20px; transition: .2s;
+  }
+  .slider:before {
+    content: ""; position: absolute; width: 16px; height: 16px;
+    left: 2px; top: 2px; background: #fff; border-radius: 50%; transition: .2s;
+  }
+  input:checked + .slider { background: #1f4d3f; }
+  input:checked + .slider:before { transform: translateX(16px); }
+  .fill-btn {
+    display: block;
+    width: calc(100% - 32px);
+    margin: 4px 16px 12px;
+    padding: 10px 0;
+    background: #1f4d3f;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .fill-btn:active { opacity: 0.85; }
+  #status {
+    text-align: center;
+    font-size: 12px;
+    color: #1f4d3f;
+    min-height: 16px;
+    margin-bottom: 6px;
+  }
+  .section-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: #555;
+    margin: 10px 16px 4px;
+  }
+  .list {
+    max-height: 340px;
+    overflow-y: auto;
+    padding: 0 16px 14px;
+  }
+  .row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 7px 10px;
+    background: #fff;
+    border: 1px solid #eee;
+    border-radius: 7px;
+    margin-bottom: 6px;
+  }
+  .row .label {
+    font-size: 12.5px;
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    margin-right: 8px;
+  }
+  .cat-nav {
+    display: flex;
+    gap: 6px;
+    padding: 0 16px 8px;
+  }
+  .cat-nav select {
+    flex: 1;
+    font-size: 12.5px;
+    padding: 5px 6px;
+    border: 1px solid #1f4d3f;
+    border-radius: 6px;
+    background: #fff;
+    color: #1f4d3f;
+    font-weight: 600;
+  }
+  .nav-btn {
+    width: 30px;
+    font-size: 16px;
+    line-height: 1;
+    border: 1px solid #1f4d3f;
+    color: #1f4d3f;
+    background: #fff;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+  .nav-btn:active { background: #eef3f0; }
+  .copybtn {
+    flex-shrink: 0;
+    font-size: 11px;
+    border: 1px solid #1f4d3f;
+    color: #1f4d3f;
+    background: #fff;
+    border-radius: 5px;
+    padding: 3px 8px;
+    cursor: pointer;
+  }
+  .copybtn:active { background: #eef3f0; }
+  .track-row {
+    display: flex;
+    gap: 0;
+    margin: 2px 16px 8px;
+    border: 1px solid #1f4d3f;
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  .track-row button {
+    flex: 1;
+    padding: 7px 0;
+    font-size: 12.5px;
+    border: none;
+    background: #fff;
+    color: #1f4d3f;
+    cursor: pointer;
+  }
+  .track-row button + button { border-left: 1px solid #1f4d3f; }
+  .track-row button.on { background: #1f4d3f; color: #fff; font-weight: 600; }
+  .track-label {
+    font-size: 12px;
+    color: #555;
+    margin: 6px 16px 4px;
+  }
+  .fillone {
+    flex-shrink: 0;
+    font-size: 11px;
+    border: 1px solid #1f4d3f;
+    color: #fff;
+    background: #1f4d3f;
+    border-radius: 5px;
+    padding: 3px 8px;
+    margin-right: 4px;
+    cursor: pointer;
+  }
+  .fillone:active { opacity: 0.85; }
+  .fillone:disabled { opacity: 0.5; cursor: default; }
+  .cat-fill {
+    display: block;
+    width: 100%;
+    margin: 0 0 8px;
+    padding: 6px 0;
+    font-size: 12px;
+    border: 1px dashed #1f4d3f;
+    color: #1f4d3f;
+    background: #fff;
+    border-radius: 7px;
+    cursor: pointer;
+  }
+  .head-row { display: flex; align-items: center; justify-content: space-between; }
+  .empty { padding: 6px 16px 4px; font-size: 12.5px; color: #444; }
+  .empty .fill-btn { width: 100%; margin: 10px 0 6px; }
+  [hidden] { display: none !important; }
+  footer {
+    font-size: 10px;
+    color: #aaa;
+    text-align: center;
+    padding: 6px 10px 12px;
+  }
+</style>
+</head>
+<body>
+  <header>
+    <div class="head-row">
+      <h1>校招投递助手</h1>
+      <button id="manageBtn" class="copybtn">资料管理</button>
+    </div>
+    <p>资料只存在这个浏览器里，不上传任何服务器</p>
+  </header>
+
+  <div id="empty" class="empty" hidden>
+    <p><b>还没有导入资料</b></p>
+    <p>在资料管理页复制提示词，连同简历发给任意 AI（ChatGPT、Claude、Kimi 等），把它返回的结果粘贴回来保存，就可以用了。</p>
+    <button id="setupBtn" class="fill-btn">打开资料管理，导入我的资料</button>
+  </div>
+
+  <div id="main">
+
+  <div class="toggle-row">
+    <span>打开网申页面自动填充</span>
+    <label class="switch">
+      <input type="checkbox" id="autoToggle" checked />
+      <span class="slider"></span>
+    </label>
+  </div>
+
+  <div class="toggle-row">
+    <span>覆盖已填写的字段</span>
+    <label class="switch">
+      <input type="checkbox" id="overwriteToggle" />
+      <span class="slider"></span>
+    </label>
+  </div>
+
+  <div class="track-label" id="trackLabel">投递方向（决定填哪些项目经历）</div>
+  <div class="track-row" id="trackRow"></div>
+
+  <button id="fillBtn" class="fill-btn">⚡ 立即重新扫描并填充当前页</button>
+  <div id="status"></div>
+
+  <div class="section-title">单项填写 · 点「填」只填这一项，点「复制」手动粘贴</div>
+  <div class="cat-nav">
+    <button id="catPrev" class="nav-btn" title="上一类">‹</button>
+    <select id="catSelect"></select>
+    <button id="catNext" class="nav-btn" title="下一类">›</button>
+  </div>
+  <div id="copyList" class="list"></div>
+
+  </div>
+
+  <footer>插件只填表，不会替你点「保存」「提交」；提交前请自己检查</footer>
+
+  <script src="profile-view.js"></script>
+  <script src="profile-store.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>资料管理 · 校招投递助手</title>
+<style>
+  :root { --main: #1f4d3f; --bg: #faf9f7; --line: #e6e3de; --warn: #a15c00; --bad: #b3261e; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: #2b2b2b; font: 14px/1.6 -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; }
+  main { max-width: 820px; margin: 0 auto; padding: 28px 16px 60px; }
+  h1 { font-size: 22px; margin: 0 0 4px; color: var(--main); }
+  .sub { color: #777; margin: 0 0 22px; }
+  .step { background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; margin-bottom: 14px; }
+  .step h2 { font-size: 15px; margin: 0 0 6px; }
+  .step h2 span { display: inline-block; width: 22px; height: 22px; line-height: 22px; text-align: center; border-radius: 50%; background: var(--main); color: #fff; font-size: 12px; margin-right: 8px; }
+  .step p { margin: 4px 0 10px; color: #555; }
+  button { font: inherit; font-size: 13px; padding: 7px 14px; border-radius: 7px; border: 1px solid var(--main); background: #fff; color: var(--main); cursor: pointer; margin: 0 6px 6px 0; }
+  button.primary { background: var(--main); color: #fff; font-weight: 600; }
+  button.danger { border-color: var(--bad); color: var(--bad); }
+  button:active { opacity: .85; }
+  textarea { width: 100%; min-height: 320px; font: 12.5px/1.5 ui-monospace, Menlo, Consolas, monospace; padding: 10px; border: 1px solid var(--line); border-radius: 8px; background: #fffefc; resize: vertical; }
+  details { margin-top: 6px; }
+  details pre { white-space: pre-wrap; background: #f5f3ef; padding: 10px; border-radius: 8px; max-height: 300px; overflow: auto; font-size: 12px; }
+  #msg { margin: 10px 0 0; white-space: pre-wrap; }
+  #msg.ok { color: var(--main); } #msg.warn { color: var(--warn); } #msg.bad { color: var(--bad); }
+  .row { display: flex; flex-wrap: wrap; align-items: center; }
+  .note { font-size: 12.5px; color: #777; }
+  #state { font-weight: 600; }
+  input[type=file] { display: none; }
+</style>
+</head>
+<body>
+<main>
+  <h1>资料管理</h1>
+  <p class="sub">资料只保存在这个浏览器里，插件不会把它发到任何服务器。当前状态：<span id="state">读取中…</span></p>
+
+  <section class="step">
+    <h2><span>1</span>复制 AI 解析提示词</h2>
+    <p>提示词告诉 AI 要整理成什么格式：只用简历里有的信息，没有的留空，不写证件号，经历原文不缩短。</p>
+    <div class="row">
+      <button id="copyPrompt" class="primary">复制提示词</button>
+    </div>
+    <details><summary class="note">查看提示词全文</summary><pre id="promptText"></pre></details>
+  </section>
+
+  <section class="step">
+    <h2><span>2</span>发给任意 AI</h2>
+    <p>打开 ChatGPT、Claude、Kimi、豆包、DeepSeek 等任意一个 AI 对话，粘贴提示词，再把简历全文贴在最后（或直接上传简历文件）。
+      籍贯、民族、政治面貌、期望城市这类简历上没有的信息，可以一起写给它。</p>
+    <p class="note">AI 会把简历内容读一遍。如果介意，可以先把简历里不想给 AI 看的内容删掉，导入后再在下面的框里补上。</p>
+  </section>
+
+  <section class="step">
+    <h2><span>3</span>粘贴 AI 返回的结果，检查并保存</h2>
+    <p>把 AI 回复的 JSON（连同 ```json 代码块一起也可以）粘贴到下面，点「检查并保存」。已经保存过的资料也显示在这里，可以直接改。</p>
+    <textarea id="json" spellcheck="false" placeholder="把 AI 返回的 JSON 粘贴到这里"></textarea>
+    <div class="row" style="margin-top:10px">
+      <button id="save" class="primary">检查并保存</button>
+      <button id="importFile">从 .json 文件导入</button>
+      <input type="file" id="file" accept=".json,application/json" />
+      <button id="download">下载备份</button>
+      <button id="example">载入示例资料（试用）</button>
+      <button id="clear" class="danger">清除资料</button>
+    </div>
+    <div id="msg"></div>
+  </section>
+
+  <p class="note">保存后回到网申页面，点浏览器右上角的插件图标即可填写。插件只填表，不会替你点「保存」「提交」，提交前请自己检查一遍。</p>
+</main>
+<script src="prompt.js"></script>
+<script src="profile-store.js"></script>
+<script src="setup.js"></script>
+</body>
+</html>

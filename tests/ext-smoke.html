@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<title>插件流程冒烟测试</title>
+<style>body { font: 14px -apple-system, "PingFang SC", sans-serif; margin: 16px; } .ok { color: #1a7f37; } .bad { color: #c62828; font-weight: 600; }</style>
+</head>
+<body>
+<h1>插件流程冒烟测试 <span id="summary">（运行中…）</span></h1>
+<p>模拟 chrome.storage / runtime，检查：没导入资料时不填并提示；AI 返回的带代码块的 JSON 能解析、保存；保存后点填充能填上。</p>
+<form id="form">
+  <div><label for="f_name">姓名</label><input id="f_name"></div>
+  <div><label for="f_phone">手机号码</label><input id="f_phone"></div>
+  <div><label for="f_mail">邮箱</label><input id="f_mail"></div>
+  <div><label for="f_eth">民族</label><input id="f_eth"></div>
+  <div><label for="f_pol">政治面貌</label><input id="f_pol"></div>
+</form>
+<ul id="out"></ul>
+<script>
+  // 模拟扩展环境：自动填充先关掉，只测手动「填充」消息
+  window.__store = { autoFillEnabled: false };
+  window.__listeners = [];
+  window.chrome = {
+    runtime: { getURL: (f) => "/" + f, onMessage: { addListener: (fn) => __listeners.push(fn) } },
+    storage: { local: {
+      get: async (k) => { const o = {}; [].concat(k).forEach(x => { if (x in __store) o[x] = JSON.parse(JSON.stringify(__store[x])); }); return o; },
+      set: async (o) => { Object.assign(__store, JSON.parse(JSON.stringify(o))); },
+      remove: async (k) => { [].concat(k).forEach(x => delete __store[x]); },
+    } },
+  };
+  window.__send = (msg) => new Promise(res => { for (const fn of __listeners) fn(msg, {}, res); setTimeout(() => res("NO_REPLY"), 15000); });
+</script>
+<script src="../fill-engine.js"></script>
+<script src="../profile-view.js"></script>
+<script src="../profile-store.js"></script>
+<script src="../content.js"></script>
+<script>
+(async () => {
+  const out = document.getElementById("out");
+  let fail = 0;
+  const ok = (what, cond, got) => {
+    if (!cond) fail++;
+    const li = document.createElement("li");
+    li.className = cond ? "ok" : "bad";
+    li.textContent = (cond ? "✓ " : "✗ ") + what + (cond ? "" : " —— 实际：" + got);
+    out.appendChild(li);
+  };
+  const v = (id) => document.getElementById(id).value;
+
+  // 1. 没有资料：不填，回复 noProfile
+  let r = await __send({ type: "AYA_FILL" });
+  ok("没资料时回复 noProfile", r && r.noProfile === true, JSON.stringify(r));
+  ok("没资料时不填任何框", !v("f_name") && !v("f_phone"), v("f_name") + "|" + v("f_phone"));
+
+  // 2. AI 回复：前后有说明文字、```json 代码块、年份写成数字、ongoing 写成字符串
+  const P = await (await fetch("profile.fixture.json", { cache: "no-store" })).json();
+  const raw = JSON.parse(JSON.stringify(P));
+  raw.education_entries[0].start_year = Number(raw.education_entries[0].start_year);
+  raw.project_entries[0].ongoing = "true";
+  delete raw.campus_entries;
+  const aiText = "好的，下面是整理好的 JSON：\n```json\n" + JSON.stringify(raw, null, 2) + "\n```\n如需修改请告诉我。";
+  let parsed;
+  try { parsed = AYA_STORE.parse(aiText); } catch (e) { parsed = null; ok("解析 AI 回复", false, e.message); }
+  if (parsed) {
+    ok("解析 AI 回复（带说明文字和代码块）", parsed.name === P.name, parsed.name);
+    ok("数字年份转成字符串", parsed.education_entries[0].start_year === String(P.education_entries[0].start_year), typeof parsed.education_entries[0].start_year);
+    ok("\"true\" 转成布尔值", parsed.project_entries[0].ongoing === true, String(parsed.project_entries[0].ongoing));
+    ok("缺的列表补成空数组", Array.isArray(parsed.campus_entries) && parsed.campus_entries.length === 0, JSON.stringify(parsed.campus_entries));
+    const c = AYA_STORE.check(parsed);
+    ok("检查结果有条目统计", /教育 2 段/.test(c.summary), c.summary);
+    await AYA_STORE.save(parsed);
+  }
+  let bad = null;
+  try { AYA_STORE.parse("这里没有 JSON"); } catch (e) { bad = e.message; }
+  ok("没有 JSON 时给出明白的错误", bad && /没找到 JSON/.test(bad), bad);
+
+  // 3. 保存后再点填充
+  r = await __send({ type: "AYA_FILL" });
+  ok("有资料后能填", r && r.filled > 0, JSON.stringify(r));
+  ok("姓名", v("f_name") === P.name, v("f_name"));
+  ok("手机", v("f_phone") === P.phone, v("f_phone"));
+  ok("邮箱", v("f_mail") === P.email, v("f_mail"));
+  ok("民族", v("f_eth") === P.ethnicity, v("f_eth"));
+
+  // 4. 资料里没定义投递方向时只有"都填"
+  const noTracks = JSON.parse(JSON.stringify(P)); delete noTracks.track_names;
+  ok("没定义方向时只有都填", Object.keys(AYA_VIEW.tracksOf(noTracks)).join() === "all", Object.keys(AYA_VIEW.tracksOf(noTracks)).join());
+  ok("选了不存在的方向退回都填", AYA_VIEW.byTrack(noTracks, "data").project_entries.length === P.project_entries.length, "");
+
+  document.getElementById("summary").textContent = fail ? `❌ ${fail} 项失败` : "✅ 全部通过";
+})();
+</script>
+</body>
+</html>

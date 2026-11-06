@@ -1,0 +1,9 @@
+# 个人资料不要提交到仓库
+profile.json
+my-profile*.json
+*.private.json
+
+# 测试和系统临时文件
+.playwright-mcp/
+.DS_Store
+node_modules/

@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>投递助手回归测试</title>
+<style>
+  body { font: 14px -apple-system, "PingFang SC", sans-serif; margin: 16px; color: #222; background: #fff; }
+  h1 { font-size: 18px; }
+  section { margin: 10px 0 14px; }
+  section h3 { font-size: 16px; margin: 6px 0; }
+  #stage { border: 1px dashed #bbb; padding: 10px; max-width: 640px; }
+  #stage input, #stage textarea { width: 300px; }
+  #stage label { font-size: 14px; }
+  #report { margin-top: 16px; }
+  .ok { color: #1a7f37; } .bad { color: #c62828; font-weight: 600; }
+  pre { white-space: pre-wrap; background: #f6f6f6; padding: 8px; }
+</style>
+</head>
+<body>
+<h1>投递助手回归测试 <span id="summary">（准备中…）</span></h1>
+<p>本地起服务后打开本页自动运行：<code>python3 tests/serve.py</code> → http://127.0.0.1:8765/tests/</p>
+<div id="stage"></div>
+<div id="report"></div>
+<script>
+  // ?engine=路径：换一个引擎文件来跑（比如拿旧版验证测试能抓到老问题）
+  document.write(`<script src="${new URLSearchParams(location.search).get("engine") || "../fill-engine.js"}"><\/script>`);
+</script>
+<script src="../profile-view.js"></script>
+<script src="mocks.js"></script>
+<script src="cases.js"></script>
+<script>
+(async () => {
+  const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+  const stage = document.getElementById("stage");
+  const report = document.getElementById("report");
+  const out = { pass: 0, fail: 0, cases: [] };
+  window.__TEST = null;
+
+  // 已安装的插件也会在本页自动跑一次（它在自己的隔离环境里）。等它的两次自动运行
+  // （页面加载时、3 秒后）都过去、页面上还没有表单，再开始装用例。
+  await sleep(3500);
+  // 运行时先藏起报告：报告里印着前面用例填的名字，引擎会当成"页面上已有这条经历"而跳过
+  report.style.display = "none";
+
+  const AYA = window.AYA;
+  const P = await (await fetch("profile.fixture.json", { cache: "no-store" })).json();
+  const manifest = await (await fetch("../manifest.json", { cache: "no-store" })).json();
+  const { CASES, valueOf } = window.TEST_CASES;
+  const norm = (s) => (s || "").replace(/\s+/g, " ").trim();
+
+  const checks0 = [{ what: "引擎版本 = manifest 版本", ok: AYA.version === manifest.version, got: `${AYA.version} / ${manifest.version}` }];
+  out.cases.push({ name: "版本号一致（P2）", checks: checks0 });
+
+  // ?only=序号：只跑这一个用例，跑完保留现场方便调试
+  const only = new URLSearchParams(location.search).get("only");
+  for (const cs of (only !== null ? [CASES[Number(only)]] : CASES)) {
+    window.MOCK.closeAll();
+    document.querySelectorAll("body > div:not(#stage):not(#report)").forEach(e => e.remove());
+    stage.innerHTML = cs.html;
+    cs.setup(stage, P);
+    await sleep(100);
+    const t0 = Date.now();
+    let err = null;
+    // runs：连续跑几次（插件实际会在页面加载时和 3 秒后各跑一次）
+    // view：这条用例要填的资料（模拟弹窗选方向 / 点单项「填」）；scope：单项填写
+    const PP = cs.view ? cs.view(P) : P;
+    try { for (let r = 0; r < (cs.runs || 1); r++) await AYA.fillForm(PP, { fresh: r === 0, scope: cs.scope, overwrite: !!cs.overwrite, full: cs.scope ? P : null }); } catch (e) { err = e; }
+    const secs = ((Date.now() - t0) / 1000).toFixed(1);
+    window.MOCK.closeAll();
+    await sleep(100);
+    const diag = AYA.diagnose(P).split("\n");
+    const missed = AYA.lastMissed || [];
+    const checks = [];
+    if (err) checks.push({ what: "fillForm 不报错", ok: false, got: String(err) });
+    for (const e of cs.expect(P)) {
+      if (e.t) {
+        const item = stage.querySelector(`[data-t="${e.t}"]`);
+        const v = item ? norm(valueOf(item)) : "(找不到字段)";
+        let ok, what;
+        if ("eq" in e) { ok = v === norm(e.eq); what = `${e.t} = ${JSON.stringify(norm(e.eq)).slice(0, 40)}`; }
+        else if ("starts" in e) { ok = v.startsWith(e.starts); what = `${e.t} 以 ${e.starts} 开头`; }
+        else if ("has" in e) { ok = v.includes(e.has); what = `${e.t} 包含 ${e.has}`; }
+        else if ("lacks" in e) { ok = !!v && !v.includes(e.lacks); what = `${e.t} 不含 ${e.lacks}（且非空）`; }
+        checks.push({ what, ok, got: v.slice(0, 60) });
+      } else if (e.diag) {
+        const lines = diag.filter(l => l.includes(e.diag));
+        const ok = e.none ? lines.length === 0 : lines.length > 0 && lines.every(l => e.has ? l.includes(e.has) : !l.includes(e.lacks));
+        checks.push({ what: e.none ? `诊断里不出现「${e.diag}」` : `诊断「${e.diag}」${e.has ? "含 " + e.has : "不含 " + e.lacks}`, ok, got: (lines[0] || "(没有这一行)").slice(0, 90) });
+      } else if (e.fn) {
+        checks.push({ what: e.what, ok: !!e.fn(), got: e.got ? e.got() : "" });
+      } else if (e.missed) {
+        checks.push({ what: `漏填提示有「${e.missed}」`, ok: missed.some(m => m.includes(e.missed)), got: missed.join("、").slice(0, 120) });
+      } else if (e.notMissed) {
+        checks.push({ what: `漏填提示没有「${e.notMissed}」`, ok: !missed.some(m => m.includes(e.notMissed)), got: missed.join("、").slice(0, 120) });
+      }
+    }
+    out.cases.push({ name: cs.name, secs, checks, diag: checks.some(c => !c.ok) ? diag : null });
+    render();
+  }
+  if (only === null) { stage.innerHTML = ""; window.MOCK.closeAll(); }
+  report.style.display = "";
+  render(true);
+
+  function render(done) {
+    out.pass = out.cases.reduce((n, c) => n + c.checks.filter(x => x.ok).length, 0);
+    out.fail = out.cases.reduce((n, c) => n + c.checks.filter(x => !x.ok).length, 0);
+    document.getElementById("summary").textContent = done
+      ? (out.fail ? `❌ ${out.fail} 项失败，${out.pass} 项通过` : `✅ 全部 ${out.pass} 项通过`) : "（运行中…）";
+    report.innerHTML = out.cases.map(c => `<h3>${c.checks.every(x => x.ok) ? "✅" : "❌"} ${c.name}${c.secs ? `（${c.secs}s）` : ""}</h3><ul>` +
+      c.checks.map(x => `<li class="${x.ok ? "ok" : "bad"}">${x.ok ? "✓" : "✗"} ${esc(x.what)}${x.ok ? "" : ` —— 实际：${esc(x.got)}`}</li>`).join("") + "</ul>" +
+      (c.diag ? `<details><summary>诊断</summary><pre>${esc(c.diag.join("\n"))}</pre></details>` : "")).join("");
+    if (done) window.__TEST = out;
+  }
+  function esc(s) { return String(s).replace(/[&<>]/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[ch])); }
+})();
+</script>
+</body>
+</html>
